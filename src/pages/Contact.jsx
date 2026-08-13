@@ -1,3 +1,4 @@
+import { useState } from "react";
 import SEO from "../components/SEO";
 import { ContactPageStructuredData } from "../structured-data";
 
@@ -53,6 +54,44 @@ const contactChannels = [
 ];
 
 export default function Contact() {
+  const [status, setStatus] = useState("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setStatus("submitting");
+    setErrorMessage("");
+
+    const form = e.currentTarget;
+    const data = new FormData(form);
+
+    try {
+      const response = await fetch("https://formspree.io/f/xdenzpjz", {
+        method: "POST",
+        body: data,
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      if (response.ok) {
+        setStatus("success");
+        form.reset();
+      } else {
+        const result = await response.json().catch(() => null);
+        if (result && result.errors && result.errors.length > 0) {
+          setErrorMessage(result.errors.map((err) => err.message).join(", "));
+        } else {
+          setErrorMessage("Oops! There was a problem submitting your form. Please try again.");
+        }
+        setStatus("error");
+      }
+    } catch (error) {
+      setErrorMessage("Network error. Please check your connection and try again.");
+      setStatus("error");
+    }
+  };
+
   return (
     <>
       <SEO
@@ -72,25 +111,56 @@ export default function Contact() {
               </span>
             </div>
 
-            <form className="contact-card">
+            <form
+              action="https://formspree.io/f/xdenzpjz"
+              method="POST"
+              onSubmit={handleSubmit}
+              className="contact-card"
+            >
+              {status === "success" && (
+                <div className="form-status form-status-success" role="alert">
+                  Thank you! Your message has been sent successfully. We will get back to you soon.
+                </div>
+              )}
+
+              {status === "error" && (
+                <div className="form-status form-status-error" role="alert">
+                  {errorMessage}
+                </div>
+              )}
+
               <label>
                 Full Name
-                <input type="text" name="fullName" />
+                <input
+                  type="text"
+                  name="fullName"
+                  required
+                  placeholder="Your full name"
+                />
               </label>
               <label>
                 Email
                 <input
                   type="email"
                   name="email"
+                  required
+                  placeholder="your.email@example.com"
                 />
               </label>
 
               <label className="message-label">
                 Message
-                <textarea name="message" rows="7" />
+                <textarea
+                  name="message"
+                  rows="7"
+                  required
+                  placeholder="How can we help you?"
+                />
               </label>
 
-              <button type="submit">Submit</button>
+              <button type="submit" disabled={status === "submitting"}>
+                {status === "submitting" ? "Submitting..." : "Submit"}
+              </button>
             </form>
 
             <div className="contact-channel-strip" aria-label="Contact channels">
@@ -112,3 +182,4 @@ export default function Contact() {
     </>
   );
 }
+
